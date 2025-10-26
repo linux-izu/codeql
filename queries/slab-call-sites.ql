@@ -11,12 +11,14 @@ import semmle.code.cpp.dataflow.new.DataFlow
 
 
 from
-    SlabCall sfc, Struct struct
+    SlabCall sfc, Struct struct, Function caller
 where
-    struct = sfc.getStruct()
+    struct = sfc.getStruct() and
+    caller = sfc.getEnclosingFunction()
 select
-    sfc, "$@ $@() -> $@",
-    sfc, sfc.getLabel(),
+    sfc, "$@: $@() { $@() -> $@ }",
+    sfc.getLabel(), sfc.getLabel(),
+    caller, caller.getName(),
     sfc, sfc.toString(),
     struct, struct.toString()
 
