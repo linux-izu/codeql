@@ -22,28 +22,28 @@ select
     sfc, sfc.toString(),
     struct, struct.toString()
 
-class SlabCall extends Call {
+cached class SlabCall extends Call {
     Function targetFunction;
-    SlabCall() {
+    cached SlabCall() {
         targetFunction = this.getTarget() and
         targetFunction.getADeclarationLocation().getFile().getBaseName() = "slab.h"
     }
 
-    abstract Struct getStruct();
-    abstract string getLabel();
+    cached abstract Struct getStruct();
+    cached abstract string getLabel();
 
-    predicate returnsPointer() {
+    cached predicate returnsPointer() {
         targetFunction.getType().getPointerIndirectionLevel() > 0
     }
 }
 
-class KfreeCall extends SlabCall {
-    KfreeCall() {
+cached class KfreeCall extends SlabCall {
+    cached KfreeCall() {
         not(this.returnsPointer()) and
         this.getTarget().getName().matches("%free%")
     }
 
-    Expr getPointerArgument() {
+    cached Expr getPointerArgument() {
         exists(Parameter pointer_param|
             this.getTarget().getAParameter() = pointer_param and
             pointer_param.getType().stripType().hasName("void") and
@@ -52,39 +52,39 @@ class KfreeCall extends SlabCall {
         )
     }
 
-    override Struct getStruct() {
+    cached override Struct getStruct() {
         result = this.getPointerArgument().getType().stripType()
     }
 
-    override string getLabel() {
+    cached override string getLabel() {
         result = "free"
     }
 }
 
-class KmallocCall extends SlabCall {
+cached class KmallocCall extends SlabCall {
 
-    KmallocCall() {
+    cached KmallocCall() {
         this.returnsPointer() and
         this.getTarget().getName().matches("%alloc%")
     }
 
-    override Struct getStruct() {
+    cached override Struct getStruct() {
         result = this.getStructFromConversion() or
         result = this.getStructFromSizeOf()
     }
 
-    override string getLabel() {
+    cached override string getLabel() {
         result = "alloc"
     }
 
-    Struct getStructFromSizeOf() {
+    cached Struct getStructFromSizeOf() {
         exists(SizeOfNode source, KmallocSizeArgumentNode sink|
             source.getStruct() = result and sink.getCall() = this and
             TaintTracking::localTaint(source, sink)
         )
     }
 
-    Struct getStructFromConversion() {
+    cached Struct getStructFromConversion() {
         exists(KmallocCallNode source, ConversionNode sink|
             source.getCall() = this and sink.getStruct() = result and
             // DataFlow::localFlow(source, sink)
@@ -92,7 +92,7 @@ class KmallocCall extends SlabCall {
         )
     }
 
-    Expr getSizeArgument() {
+    cached Expr getSizeArgument() {
         exists(Parameter size_param|
             this.getTarget().getAParameter() = size_param and
             size_param.getType().getName().matches("size_t") and
@@ -104,18 +104,18 @@ class KmallocCall extends SlabCall {
 
 module ConversionFlow = DataFlow::Global<ConversionFlowConfiguration>;
 
-module ConversionFlowConfiguration implements DataFlow::ConfigSig {
-    predicate isSource(DataFlow::Node source) {
+cached module ConversionFlowConfiguration implements DataFlow::ConfigSig {
+    cached predicate isSource(DataFlow::Node source) {
         source instanceof KmallocCallNode
     }
-    predicate isSink(DataFlow::Node sink) {
+    cached predicate isSink(DataFlow::Node sink) {
         sink instanceof ConversionNode
     }
 }
 
-class SizeOfNode extends DataFlow::Node {
+cached class SizeOfNode extends DataFlow::Node {
     Struct struct;
-    SizeOfNode() {
+    cached SizeOfNode() {
         exists(SizeofExprOperator sof|
             this.asConvertedExpr() = sof.getExprOperand().getFullyConverted() and
             struct = this.getType().stripType()
@@ -126,40 +126,40 @@ class SizeOfNode extends DataFlow::Node {
         )
     }
 
-    Struct getStruct() {
+    cached Struct getStruct() {
         result = struct
     }
 }
 
-class KmallocSizeArgumentNode extends DataFlow::Node {
+cached class KmallocSizeArgumentNode extends DataFlow::Node {
     KmallocCall kfc;
-    KmallocSizeArgumentNode() {
+    cached KmallocSizeArgumentNode() {
         kfc.getSizeArgument() = this.asExpr()
     }
 
-    KmallocCall getCall() {
+    cached KmallocCall getCall() {
         result = kfc
     }
 }
 
-class KmallocCallNode extends DataFlow::Node {
+cached class KmallocCallNode extends DataFlow::Node {
     KmallocCall kfc;
-    KmallocCallNode() {
+    cached KmallocCallNode() {
         kfc = this.asConvertedExpr()
     }
 
-    KmallocCall getCall() {
+    cached KmallocCall getCall() {
         result = kfc
     }
 }
 
-class ConversionNode extends DataFlow::Node {
+cached class ConversionNode extends DataFlow::Node {
     Struct struct;
-    ConversionNode() {
+    cached ConversionNode() {
         struct = this.asConvertedExpr().getType().stripType()
     }
 
-    Struct getStruct() {
+    cached Struct getStruct() {
         result = struct
     }
 }
