@@ -87,7 +87,8 @@ class KmallocCall extends SlabCall {
     Struct getStructFromConversion() {
         exists(KmallocCallNode source, ConversionNode sink|
             source.getCall() = this and sink.getStruct() = result and
-            DataFlow::localFlow(source, sink)
+            // DataFlow::localFlow(source, sink)
+            ConversionFlow::flow(source, sink)
         )
     }
 
@@ -98,6 +99,17 @@ class KmallocCall extends SlabCall {
             not size_param.getName().matches("n") and
             result = this.getArgument(size_param.getIndex())
         )
+    }
+}
+
+module ConversionFlow = DataFlow::Global<ConversionFlowConfiguration>;
+
+module ConversionFlowConfiguration implements DataFlow::ConfigSig {
+    predicate isSource(DataFlow::Node source) {
+        source instanceof KmallocCallNode
+    }
+    predicate isSink(DataFlow::Node sink) {
+        sink instanceof ConversionNode
     }
 }
 
